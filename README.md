@@ -7,3 +7,5 @@ Making changes to add the following support :-
 2. Optimization for improving performance of DNS queries
 
 3. More Logging
+
+4. Error Handling
