@@ -23,17 +23,25 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"fmt"
 )
 
 var forwardDNS = flag.String("forward", "8.8.8.8:53", "IP address of forwarder DNS")
 var dockerZone = flag.String("zone", "docker.", "Docker zone name")
-var dockerEndpoint = flag.String("docker", "http://10.0.7.12:5422", "Docker API endpoint")
-var listenAddress = flag.String("listen", "127.0.0.1:53", "DNS listen address")
+var dockerEndpoint = flag.String("docker", "https://172.17.42.1:2376", "Docker API endpoint")
+var listenAddress = flag.String("listen", "172.17.0.4:53", "DNS listen address")
+var certPath = flag.String("cert", "./cert.pem", "Path to the Certificate PEM file")
+var keyPath = flag.String("key", "./key.pem", "Path to the Key PEM file")
 
 func main() {
 	flag.Parse()
 
-	dockerClient, _ := docker.NewClient(*dockerEndpoint)
+	dockerClient, error := docker.NewTLSClient(*dockerEndpoint, *certPath, *keyPath, "")
+	
+	if error != nil {	
+		fmt.Println(error)
+	}
+
 	dockerResolver := resolver.NewDocker(dockerClient, *dockerZone)
 	resolver := resolver.NewForward(*forwardDNS)
 	server := server.New(*dockerZone, *listenAddress, dockerResolver, resolver)
@@ -41,8 +49,9 @@ func main() {
 	server.Run()
 	log.Printf("Server listening on TCP/UDP %s\n", *listenAddress)
 
-	sig := make(chan os.Signal)
+  	sig := make(chan os.Signal)
 	signal.Notify(sig, os.Interrupt)
+
 
 	for {
 		select {
@@ -50,4 +59,5 @@ func main() {
 			return
 		}
 	}
+	
 }
