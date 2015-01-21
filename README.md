@@ -1,4 +1,4 @@
-***DockDNS for Boot2Docker***
+**DockDNS for Boot2Docker**
 
 Making changes to add the following support :-
 
