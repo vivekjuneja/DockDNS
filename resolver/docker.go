@@ -21,6 +21,7 @@ import (
 	"log"
 	"net"
 	"strings"
+	"fmt"
 )
 
 type DockerResolver struct {
@@ -34,14 +35,20 @@ func NewDocker(client *docker.Client, zone string) Resolverer {
 }
 
 func (r *DockerResolver) Lookup(proto string, w dns.ResponseWriter, req *dns.Msg) {
+ 	fmt.Println("Resolving Lookup....")	
 	r.updateContainers()
 	question := req.Question[0]
+	
 	if question.Qtype != dns.TypeA || question.Qclass != dns.ClassINET {
 		dns.HandleFailed(w, req)
+		fmt.Println("Failed")	
 		return
 	}
 
 	name := strings.TrimSuffix(question.Name, "."+r.zone)
+
+	fmt.Println("name To Query : ", name) 
+
 	ipaddr, exists := r.containers[name]
 	if !exists {
 		dns.HandleFailed(w, req)
@@ -64,6 +71,7 @@ func (r *DockerResolver) Lookup(proto string, w dns.ResponseWriter, req *dns.Msg
 }
 
 func (r *DockerResolver) updateContainers() {
+  	fmt.Println("Updating Containers...")	
 	cont, err := r.client.ListContainers(docker.ListContainersOptions{})
 	if err != nil {
 		log.Printf("Failed to update containers: %v\n", err)
@@ -79,7 +87,24 @@ func (r *DockerResolver) updateContainers() {
 			continue
 		}
 		ipaddr := containerJS.NetworkSettings.IPAddress
-		containers[strings.TrimPrefix(containerJS.Name, "/")] = ipaddr
+		containerName := strings.TrimPrefix(containerJS.Name, "/")
+
+
+		//Splitting the container Name with "_" to check for any Fig generated container naming
+		containerArray := strings.Split(containerName, "_")	
+
+		//Check if the Fig naming is detected : Fig names are of the pattern : <STRING>_<STRING>_<NUMBER>. 	
+		if len(containerArray) == 3 {
+			key := containerArray[1]  //We are interested in the middle STRING, which is the Service name 
+			fmt.Println("Figkey === ", key)
+			containers[key] = ipaddr 
+		} else {
+		        key := containerArray[0] //If the Fig naming is NOT used, then use the first STRING element.
+			fmt.Println("NonFigkey = ", key)
+			containers[key] = ipaddr 			
+		}	
+
+		
 	}
 	r.containers = containers
 }
