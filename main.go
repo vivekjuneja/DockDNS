@@ -17,8 +17,8 @@ package main
 
 import (
 	"flag"
-	"github.com/farcaller/dockdns/resolver"
-	"github.com/farcaller/dockdns/server"
+	"github.com/vivekjuneja/dockdns/resolver"
+	"github.com/vivekjuneja/dockdns/server"
 	"github.com/fsouza/go-dockerclient"
 	"log"
 	"os"
