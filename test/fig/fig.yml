@@ -1,0 +1,11 @@
+webservice:
+  build: .
+  command: python app.py
+  ports:
+   - "5000:5000"
+  volumes:
+   - .:/code
+  dns: 172.17.0.4
+redisservice:
+  image: redis
+  dns: 172.17.0.4
