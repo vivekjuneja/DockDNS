@@ -96,11 +96,11 @@ func (r *DockerResolver) updateContainers() {
 		//Check if the Fig naming is detected : Fig names are of the pattern : <STRING>_<STRING>_<NUMBER>. 	
 		if len(containerArray) == 3 {
 			key := containerArray[1]  //We are interested in the middle STRING, which is the Service name 
-			fmt.Println("Figkey === ", key)
+			fmt.Println("Name of container used (fig managed) : ", key)
 			containers[key] = ipaddr 
 		} else {
 		        key := containerArray[0] //If the Fig naming is NOT used, then use the first STRING element.
-			fmt.Println("NonFigkey = ", key)
+			fmt.Println("Name of container used (non-fig managed) : ", key)
 			containers[key] = ipaddr 			
 		}	
 
