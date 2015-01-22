@@ -34,9 +34,22 @@ func NewDocker(client *docker.Client, zone string) Resolverer {
 	return &DockerResolver{client, zone, map[string]string{}}
 }
 
+func checkIfContainerNameExists (name string, containers map[string]string) (bool) {
+
+        fmt.Println("inside checkIfContainerNameExists()")
+	_, exists := containers[name]
+        if !exists {
+		fmt.Println("Not Found, will be a cache miss")
+                return false 
+        }	
+	fmt.Println("Cache Hit : Found the Name in Cache")	
+	return true
+}
+
+
 func (r *DockerResolver) Lookup(proto string, w dns.ResponseWriter, req *dns.Msg) {
  	fmt.Println("Resolving Lookup....")	
-	r.updateContainers()
+
 	question := req.Question[0]
 	
 	if question.Qtype != dns.TypeA || question.Qclass != dns.ClassINET {
@@ -49,11 +62,23 @@ func (r *DockerResolver) Lookup(proto string, w dns.ResponseWriter, req *dns.Msg
 
 	fmt.Println("name To Query : ", name) 
 
-	ipaddr, exists := r.containers[name]
-	if !exists {
-		dns.HandleFailed(w, req)
-		return
+
+	//Check if the name exists in the container data structure
+	status := checkIfContainerNameExists(name, r.containers )
+
+	//If the Container Name is NOT available in Cache 
+	if !status  {
+	
+		//If not available in Cache, check from Docker API  - Cache Miss 
+		r.updateContainers()
 	}
+
+ 	ipaddr, exists := r.containers[name]
+
+	if !exists {
+                dns.HandleFailed(w, req)
+                return
+        }		
 
 	answer := dns.A{
 		Hdr: dns.RR_Header{
@@ -65,6 +90,7 @@ func (r *DockerResolver) Lookup(proto string, w dns.ResponseWriter, req *dns.Msg
 		},
 		A: net.ParseIP(ipaddr),
 	}
+	
 	req.Answer = []dns.RR{&answer}
 	req.Response = true
 	w.WriteMsg(req)
@@ -96,11 +122,9 @@ func (r *DockerResolver) updateContainers() {
 		//Check if the Fig naming is detected : Fig names are of the pattern : <STRING>_<STRING>_<NUMBER>. 	
 		if len(containerArray) == 3 {
 			key := containerArray[1]  //We are interested in the middle STRING, which is the Service name 
-			fmt.Println("Name of container used (fig managed) : ", key)
 			containers[key] = ipaddr 
 		} else {
 		        key := containerArray[0] //If the Fig naming is NOT used, then use the first STRING element.
-			fmt.Println("Name of container used (non-fig managed) : ", key)
 			containers[key] = ipaddr 			
 		}	
 
